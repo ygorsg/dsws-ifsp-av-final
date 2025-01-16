@@ -44,9 +44,9 @@ class User(db.Model):
 
 class NameForm(FlaskForm):
     name = StringField('What is your name?', validators=[DataRequired()])
-    role = SelectField('Role?', choices=[('Administrator', 'Administrator'),
-                                         ('Moderator', 'Moderator'),
-                                         ('User', 'User')])
+    role = SelectField('Role?', choices=[('Administrator'),
+                                         ('Moderator'),
+                                         ('User')])
     submit = SubmitField('Submit')
 
 @app.shell_context_processor
@@ -72,14 +72,15 @@ def index():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.name.data).first()
         if not user:
-            user_role = Role.query.filter_by(name=form.role.data).first()
-            user = User(username=form.name.data, role=user_role)
+            role = Role.query.filter_by(name=form.role.data).first()
+            user = User(username=form.name.data, role=role)
             db.session.add(user)
             db.session.commit()
             session['known'] = False
         else:
             session['known'] = True
         session['name'] = form.name.data
+        session['role'] = form.role.data
         return redirect(url_for('index'))
     return render_template('index.html',
                            form=form,
