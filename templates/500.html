@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Flasky - Internal Server Error{% endblock %}
+{% block title %}Avaliação semestral{% endblock %}
 
 {% block page_content %}
+
 <div class="page-header">
-    <h1>Internal Server Error</h1>
+    <h1>Não disponível</h1>
 </div>
+
+<p>A data e hora local é {{ moment(current_time).format('LLL') }}.</p>
+
 {% endblock %}

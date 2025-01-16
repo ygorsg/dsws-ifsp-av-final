@@ -1,12 +1,13 @@
 import os
-from flask import Flask, render_template, session, redirect, url_for
+from flask import Flask, render_template, session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, SelectField
+from wtforms import StringField, SubmitField, RadioField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from datetime import datetime
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -21,70 +22,75 @@ moment = Moment(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-
-class Role(db.Model):
-    __tablename__ = 'roles'
+class Semestre(db.Model):
+    __tablename__ = 'semestres'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True)
-    users = db.relationship('User', backref='role', lazy='dynamic')
+    name_semestre = db.Column(db.String(64), unique=True)
+    disciplinas = db.relationship('Disciplina', backref='semestre', lazy='dynamic')
 
     def __repr__(self):
-        return '<Role %r>' % self.name
+        return '<Semestre %r>' % self.name_semestre
 
 
-class User(db.Model):
-    __tablename__ = 'users'
+class Disciplina(db.Model):
+    __tablename__ = 'disciplinas'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(64), unique=True, index=True)
-    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'))
+    name_disciplina = db.Column(db.String(64), unique=True, index=True)
+    semestre_id = db.Column(db.Integer, db.ForeignKey('semestres.id'))
 
     def __repr__(self):
-        return '<User %r>' % self.username
-
+        return '<Disciplina %r>' % self.name_disciplina
 
 class NameForm(FlaskForm):
-    name = StringField('What is your name?', validators=[DataRequired()])
-    role = SelectField('Role?', choices=[('Administrator'),
-                                         ('Moderator'),
-                                         ('User')])
-    submit = SubmitField('Submit')
+    disciplina = StringField('Cadastre a nova disciplina e o semestre associado:', validators=[DataRequired()])
+    semestre = RadioField(choices=[('1º semestre'),
+                                ('2º semestre'),
+                                ('3º semestre'),
+                                ('4º semestre'),
+                                ('5º semestre'),
+                                ('6º semestre')])
+    submit = SubmitField('Cadastrar')
 
 @app.shell_context_processor
 def make_shell_context():
-    return dict(db=db, User=User, Role=Role)
+    return dict(db=db, Disciplina=Disciplina, Semestre=Semestre)
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template('404.html'), 404
+    return render_template('404.html', current_time=datetime.utcnow()), 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template('500.html'), 500
+    return render_template('500.html', current_time=datetime.utcnow()), 500
 
-
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
+    return render_template('index.html', current_time=datetime.utcnow())
+
+@app.route('/disciplinas', methods=['GET', 'POST'])
+def disciplinas():
     form = NameForm()
-    users = User.query.all()
-    roles = Role.query.all()
+    disciplinas = Disciplina.query.all()
+    semestres = Semestre.query.all()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.name.data).first()
-        if not user:
-            role = Role.query.filter_by(name=form.role.data).first()
-            user = User(username=form.name.data, role=role)
-            db.session.add(user)
+        disciplina = Disciplina.query.filter_by(name_disciplina=form.disciplina.data).first()
+        if not disciplina:
+            semestre = Semestre.query.filter_by(name_semestre=form.semestre.data).first()
+            disciplina = Disciplina(name_disciplina=form.disciplina.data, semestre=semestre)
+            db.session.add(disciplina)
             db.session.commit()
             session['known'] = False
         else:
             session['known'] = True
-        session['name'] = form.name.data
-        session['role'] = form.role.data
-        return redirect(url_for('index'))
-    return render_template('index.html',
+            flash('Disciplina já existe na base de dados!')
+        session['disciplina'] = form.disciplina.data
+        session['semestre'] = form.semestre.data
+        return redirect(url_for('disciplinas'))
+    return render_template('disciplinas.html',
                            form=form,
-                           name=session.get('name'),
+                           name=session.get('disciplina'),
                            known=session.get('known', False),
-                           users=users,
-                           roles=roles)
+                           disciplinas=disciplinas,
+                           semestres=semestres)
